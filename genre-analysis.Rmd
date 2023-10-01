@@ -1,0 +1,53 @@
+---
+title: "Genre Analysis"
+author: "Andrew Yang"
+date: '2023-10-01'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r, fig.width=14, fig.height=12}
+library(tidyverse)
+
+# Load the CSV file
+spotify_data <- read.csv('spotify-data.csv')
+
+# Convert release_date to Date object
+spotify_data$release_date <- as.Date(spotify_data$release_date, format = "%m/%d/%Y")
+
+# Extract year from release_date
+spotify_data$release_year <- lubridate::year(spotify_data$release_date)
+
+# Extract unique genres
+unique_genres <- unique(unlist(strsplit(as.character(spotify_data$genres), ",")))
+
+genre_counts <- spotify_data %>%
+  separate_rows(genres, sep = ",") %>%
+  mutate(genres = trimws(gsub("\\[|\\]", "", genres))) %>%  # To account for different genre names (chatgpt)
+  group_by(release_year, genres) %>%
+  summarize(count = n(), .groups='drop')
+
+# Filter out genres with low counts 
+threshold_count <- 10
+genre_counts <- genre_counts %>%
+  group_by(genres) %>%
+  filter(sum(count) > threshold_count)
+
+# Plotting the distribution of genres over time
+ggplot(genre_counts, aes(x = release_year, y = count, fill = genres)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Distribution of Genres Over Time",
+       x = "Release Year",
+       y = "Frequency",
+       fill = "Genre") +
+  theme_minimal() +
+  theme(legend.position = "bottom", legend.box = "horizontal",
+       axis.text.x = element_text(angle = 45, hjust = 1)) +  
+  scale_x_continuous(breaks = unique(genre_counts$release_year))
+
+```

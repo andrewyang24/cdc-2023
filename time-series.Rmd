@@ -1,29 +1,155 @@
 ---
 title: "Time-Series"
-output: html_document
+author: "Andrew Yang"
 date: '2023-09-30'
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Libraries
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(lubridate)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+## Data Filtering
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+# Load the CSV file
+spotify_data <- read_csv("spotify-top-50-tracks-data-with-features_raw.csv")
+
+# Convert release_date to a Date object
+spotify_data$release_date <- as.Date(spotify_data$release_date)
+
+spotify_data_filtered <- spotify_data %>%
+  select(artist, release_date, popularity)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Artist Time Series Plot
+
+```{r, fig.width=16, fig.height=8}
+# Extract unique artists
+unique_artists <- unique(spotify_data_filtered$artist)
+
+# Aggregate duplicate entries by taking the mean
+spotify_data_filtered <- spotify_data_filtered %>%
+  group_by(artist, release_date) %>%
+  summarize(popularity = mean(popularity))
+
+# Pivot wider
+artist_popularity <- spotify_data_filtered %>%
+  pivot_wider(names_from = artist, values_from = popularity, values_fill = 0)
+
+# Pivot longer
+artist_popularity_long <- pivot_longer(artist_popularity, cols = -release_date, names_to = "Artist", values_to = "Popularity")
+
+# Get the top 10 most popular artists (chatgpt)
+top_artists <- artist_popularity_long %>%
+  group_by(Artist) %>%
+  summarize(total_popularity = sum(Popularity)) %>%
+  arrange(desc(total_popularity)) %>%
+  slice_head(n = 10) %>%
+  pull(Artist)
+
+# Filter the data for the top 10 artists
+filtered_data <- artist_popularity_long %>%
+  filter(Artist %in% top_artists)
+
+# Time series plot for popularity of all top 10 artists
+ggplot(filtered_data, aes(x = release_date, y = Popularity, color = Artist)) +
+  geom_line(size = 1) +
+  labs(title = "Popularity of Top 10 Artists Over Time",
+       x = "Release Date",
+       y = "Popularity",
+       color = "Artist") +
+  theme_minimal() +
+  theme(legend.position = "bottom", 
+        legend.box = "horizontal",   
+        legend.title = element_blank(),
+        plot.title = element_text(size = 18, hjust = 0.5),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        legend.text = element_text(size = 10),
+        plot.margin = margin(1, 1, 1, 1, "cm")) 
+```
+```{r, fig.width=16, fig.height=18}
+# Time series plot for popularity of all top 10 artists
+ggplot(filtered_data, aes(x = release_date, y = Popularity, color = Artist)) +
+  geom_line(size = 1) +
+  labs(title = "Popularity of Top 10 Artists Over Time",
+       x = "Release Date",
+       y = "Popularity",
+       color = "Artist") +
+  theme_minimal() +
+  theme(legend.position = "bottom",  # Adjust legend position
+        legend.box = "horizontal",   # Arrange legend horizontally
+        legend.title = element_blank(),
+        plot.title = element_text(size = 18, hjust = 0.5),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        legend.text = element_text(size = 10),
+        plot.margin = margin(1, 1, 1, 1, "cm")) +  
+  facet_wrap(~ Artist, scales = "free_y", ncol = 2, strip.position = "bottom")+
+  theme(strip.text = element_text(size = 10))  
+```
+
+
+```{r}
+# Create a color palette
+colors <- rainbow(length(top_artists))
+
+# Loop through each artist and create a time series plot
+for (i in seq_along(top_artists)) {
+  selected_artist <- top_artists[i]
+  
+  artist_data <- spotify_data_filtered %>% filter(artist == selected_artist)
+  
+  # Create a time series plot of popularity over time for the selected artist
+  p <- ggplot(artist_data, aes(x = release_date, y = popularity, color = selected_artist)) +
+    geom_line(size = 1.5) +
+    labs(title = paste("Popularity of Tracks by", selected_artist, "Over Time"),
+         x = "Release Date",
+         y = "Popularity (0-100)") +
+    theme_minimal() +
+    theme(axis.title = element_text(size = 14),    
+          axis.text = element_text(size = 12),     
+          plot.title = element_text(size = 18, hjust = 0.5),  
+          legend.position = "none") +             
+    scale_x_date(limits = c(as.Date("2000-01-01"), as.Date("2010-12-31"))) +
+    scale_y_continuous(limits = c(0, 100)) +  
+    scale_color_manual(values = colors[i])  
+    
+  print(p)
+}
+
+```
+
+
+```{r}
+# Fun time series plot for Taylor Swift
+selected_artist <- "Taylor Swift"
+
+artist_data <- spotify_data_filtered %>% filter(artist == selected_artist)
+
+ggplot(artist_data, aes(x = release_date, y = popularity)) +
+  geom_line(color = "red", size = 1.5) +  
+  labs(title = paste("Popularity of Tracks by", selected_artist, "Over Time"),
+       x = "Release Date",
+       y = "Popularity") +
+  theme_minimal() +
+  theme(axis.title = element_text(size = 14),    
+        axis.text = element_text(size = 12),     
+        plot.title = element_text(size = 18, hjust = 0.5),  
+        legend.position = "none") +             
+  scale_x_date(limits = c(as.Date("2000-01-01"), as.Date("2010-12-31")))
+```
