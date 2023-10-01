@@ -62,11 +62,13 @@ top_artists <- artist_popularity_long %>%
   pull(Artist)
 
 # Filter the data for the top 10 artists
-filtered_data <- artist_popularity_long %>%
+top_artists_data <- artist_popularity_long %>%
   filter(Artist %in% top_artists)
 
+write.csv(top_artists_data, "top_artists_data.csv", row.names = FALSE)
+
 # Time series plot for popularity of all top 10 artists
-ggplot(filtered_data, aes(x = release_date, y = Popularity, color = Artist)) +
+ggplot(top_artists_data, aes(x = release_date, y = Popularity, color = Artist)) +
   geom_line(size = 1) +
   labs(title = "Popularity of Top 10 Artists Over Time",
        x = "Release Date",

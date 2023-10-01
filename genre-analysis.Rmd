@@ -38,6 +38,8 @@ genre_counts <- genre_counts %>%
   group_by(genres) %>%
   filter(sum(count) > threshold_count)
 
+write.csv(genre_counts, "genre_counts.csv", row.names = FALSE)
+
 # Plotting the distribution of genres over time
 ggplot(genre_counts, aes(x = release_year, y = count, fill = genres)) +
   geom_bar(stat = "identity", position = "stack") +

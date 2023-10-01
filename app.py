@@ -66,5 +66,5 @@ def get_top_tracks(start_year, end_year, limit=50):
 # Save to df and csv
 top_tracks_data = get_top_tracks(2000, 2010)
 df_top_tracks = pd.DataFrame(top_tracks_data)
-df_top_tracks.to_csv('spotify-top-50-tracks-data-with-features_raw.csv', index=False)
+df_top_tracks.to_csv('./data/spotify-data.csv', index=False)
 print(df_top_tracks.head())
